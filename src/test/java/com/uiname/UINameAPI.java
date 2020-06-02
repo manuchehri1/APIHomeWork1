@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -111,9 +112,10 @@ public class UINameAPI {
                   response. then().
                                   statusCode(400).
                             and().
+                                  statusLine(containsString("Bad Request")).
+                            and().
                                   body("error",is("Invalid gender"));
 
-                  assertTrue(response.statusLine().contains("Bad Request"));
 
     }
 
@@ -169,7 +171,10 @@ public class UINameAPI {
 
                     response. then().
                                     statusCode(200).
-                                    header("Content-Type","application/json; charset=utf-8");
+                                    header("Content-Type","application/json; charset=utf-8").
+                              and().
+                                    body("size()",is(uniqueNames.size()));
+
                     assertTrue(uniqueNames.size()==originalNames.size());
 
 
@@ -197,7 +202,12 @@ public class UINameAPI {
                                     get();
                     response.then().
                                     statusCode(200).
-                                    contentType("application/json; charset=utf-8");
+                                    contentType("application/json; charset=utf-8").
+                              and().
+                                    body("size()",is(5)).
+                                    body("gender",everyItem(is("male"))).
+                                    body("region",everyItem(is("United States")));
+        // 2. way
         List<String> usersRegion = response.jsonPath().getList("region");
         //System.out.println("usersRegions = " + usersRegion);
         List<String> usersGender = response.jsonPath().getList("gender");
@@ -216,6 +226,56 @@ public class UINameAPI {
 
     }
 
+    //      3 params test
+//1. Create a request by providing query parameters:
+// a valid region, gender and amount (must be bigger than 1)
+//2. Verify status code 200, content type application/json; charset=utf-8
+//3. Verify that all objects the response have the same region and gender passed in step 1
+
+    //nextInt () method from Random class will create numbers between 0-499
+    //That's why we add + 1
+    //in this case my random number will be between 1-500
+    int randomAmount = new Random().nextInt(500) + 1;
+    List<String> genders = Arrays.asList("male","female");//We will pick random gender for each execution
+    public String generateRandomGender() {
+        Collections.shuffle(genders);
+        return genders.get(0);
+    }
+    //getProperty("user.dir") will provide project path: C:\Users\1\Desktop\bugbusters\APIHomeworks
+    File namesJson = new File(System.getProperty("user.dir") + File.separator + "names.json");
+    JsonPath jsonPath = new JsonPath(namesJson);
+    List<String>regions = jsonPath.getList("region");
+    public String generateRandomRegion() {
+        Collections.shuffle(regions);
+        return regions.get(0);
+    }
+    @Test
+    @DisplayName("3 params test")
+    public void threeParamsTest2() {
+        String randomGender = generateRandomGender();
+        String randomRegion = generateRandomRegion();
+        System.out.println("randomRegion = " + randomRegion);
+        System.out.println("randomAmount = " + randomAmount);
+        System.out.println("randomGender = " + randomGender);
+        Response response =
+                given().
+                        queryParams("region",randomRegion).
+                        queryParams("gender",randomGender).
+                        queryParams("amount",randomAmount).
+                        when().
+                        get().prettyPeek();
+        response.then().
+                assertThat().
+                statusCode(200).
+                and().
+                contentType("application/json; charset=utf-8").
+                and().
+                body("size()",is(randomAmount)).
+                body("gender",everyItem(is(randomGender))).
+                body("region",everyItem(is(randomRegion)));
+    }
+
+
 
 
 
@@ -227,16 +287,19 @@ public class UINameAPI {
     @Test
     @DisplayName("Verifying of region with invalid parameter")
     public void amountCountTest() {
-        Response response = given().
-                                    queryParam("amount", 5).
-                            when().
-                                    get();
-                response.   then().
-                                    statusCode(200).
-                                    contentType("application/json; charset=utf-8");
-                List<User> usersList = response.jsonPath().getList("",User.class);
 
-                            assertTrue(usersList.size()==5);
+        given().
+                queryParam("amount", randomAmount).
+        when().
+                get().
+        then().
+                statusCode(200).
+                contentType("application/json; charset=utf-8").
+        and().
+                body("size()",is(randomAmount));
+
+
+
 
     }
 
